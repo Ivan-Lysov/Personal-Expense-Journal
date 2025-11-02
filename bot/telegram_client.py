@@ -1,44 +1,181 @@
 import json
-import urllib.request
 import os
+import urllib.request
+import urllib.error
+from typing import Any, Dict, Optional
 
 from dotenv import load_dotenv
-
 load_dotenv()
 
+def _ensure_base_uri() -> str:
+    """
+    Resolve TELEGRAM_BASE_URI from env or build it from BOT_TOKEN.
 
-def makeRequest(method: str, **param) -> dict:
-    json_data = json.dumps(param).encode("utf-8")
+    Returns
+    -------
+    str
+        Base URI like 'https://api.telegram.org/bot<token>'.
+    """
+    base = os.getenv("TELEGRAM_BASE_URI")
+    if base:
+        return base.rstrip("/")
+    token = os.getenv("BOT_TOKEN")
+    if not token:
+        raise RuntimeError("Neither TELEGRAM_BASE_URI nor BOT_TOKEN is set")
+    return f"https://api.telegram.org/bot{token}"
 
-    request = urllib.request.Request(
+
+def _request(method: str, **params: Any) -> Dict[str, Any]:
+    """
+    Perform a Bot API request and return the 'result' payload.
+
+    Parameters
+    ----------
+    method : str
+        Bot API method name (e.g., 'sendMessage').
+    **params : Any
+        JSON-serializable method parameters.
+
+    Returns
+    -------
+    dict
+        Telegram 'result' JSON.
+
+    Raises
+    ------
+    RuntimeError
+        If Telegram returned ok=False or non-200 HTTP.
+    """
+    base_uri = _ensure_base_uri()
+    url = f"{base_uri}/{method}"
+    data = json.dumps(params).encode("utf-8")
+    req = urllib.request.Request(
+        url=url,
+        data=data,
         method="POST",
-        url=f'{os.getenv("TELEGRAM_BASE_URI")}/{method}',
-        data=json_data,
         headers={"Content-Type": "application/json"},
     )
+    try:
+        with urllib.request.urlopen(req) as resp:
+            body = resp.read().decode("utf-8")
+            payload = json.loads(body)
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"HTTPError for {method}: {e.code} {e.reason}") from e
+    except urllib.error.URLError as e:
+        raise RuntimeError(f"URLError for {method}: {e.reason}") from e
 
-    with urllib.request.urlopen(request) as response:
-        response_body = response.read().decode("utf-8")
-        response_json = json.loads(response_body)
-        assert response_json["ok"] is True
-        return response_json["result"]
+    if not isinstance(payload, dict) or payload.get("ok") is not True:
+        desc = payload.get("description") if isinstance(payload, dict) else None
+        raise RuntimeError(f"Telegram error for {method}: {desc or 'unknown error'}")
+    return payload["result"]
+
+def getUpdates(**params: Any) -> Dict[str, Any]:
+    """
+    Fetch updates (long polling friendly).
+
+    Parameters
+    ----------
+    **params : Any
+        getUpdates parameters: offset, timeout, limit, allowed_updates, etc.
+
+    Returns
+    -------
+    dict
+        Raw 'result' from Telegram (list of updates).
+    """
+    return _request("getUpdates", **params)
 
 
-def getUpdates(**params) -> dict:
-    return makeRequest("getUpdates", **params)
+def sendMessage(chat_id: int, text: str, **params: Any) -> Dict[str, Any]:
+    """
+    Send a text message.
+
+    Parameters
+    ----------
+    chat_id : int
+        Target chat id.
+    text : str
+        Message text.
+    **params : Any
+        Additional Bot API fields, e.g. reply_markup (dict),
+        parse_mode, disable_notification, etc.
+
+    Returns
+    -------
+    dict
+        Sent message object.
+    """
+    return _request("sendMessage", chat_id=chat_id, text=text, **params)
 
 
-def sendMessage(chat_id: int, text: str, **params) -> dict:
-    return makeRequest("sendMessage", chat_id=chat_id, text=text, **params)
+def answerCallbackQuery(callback_query_id: str, **params: Any) -> Dict[str, Any]:
+    """
+    Answer a callback query (for inline button clicks).
+
+    Parameters
+    ----------
+    callback_query_id : str
+        Callback query identifier from update.callback_query.id.
+    **params : Any
+        Optional: text, show_alert, url, cache_time.
+
+    Returns
+    -------
+    dict
+        True-like result from Telegram.
+    """
+    return _request("answerCallbackQuery", callback_query_id=callback_query_id, **params)
 
 
-def sendSticker(chat_id: int, sticker_file_id: str) -> dict:
-    return makeRequest("sendSticker", chat_id=chat_id, sticker=sticker_file_id)
+def sendSticker(chat_id: int, sticker_file_id: str, **params: Any) -> Dict[str, Any]:
+    """
+    Send a sticker (by file_id).
+
+    Parameters
+    ----------
+    chat_id : int
+        Target chat id.
+    sticker_file_id : str
+        Sticker file_id.
+    **params : Any
+        Optional Bot API fields.
+
+    Returns
+    -------
+    dict
+        Sent message object.
+    """
+    return _request("sendSticker", chat_id=chat_id, sticker=sticker_file_id, **params)
 
 
-def sendPhoto(chat_id: int, photo_file_id: str, **params) -> dict:
-    return makeRequest("sendPhoto", chat_id=chat_id, photo=photo_file_id, **params)
+def sendPhoto(chat_id: int, photo_file_id: str, **params: Any) -> Dict[str, Any]:
+    """
+    Send a photo (by file_id).
+
+    Parameters
+    ----------
+    chat_id : int
+        Target chat id.
+    photo_file_id : str
+        Photo file_id.
+    **params : Any
+        Optional Bot API fields, e.g. caption, reply_markup.
+
+    Returns
+    -------
+    dict
+        Sent message object.
+    """
+    return _request("sendPhoto", chat_id=chat_id, photo=photo_file_id, **params)
 
 
-def getMe() -> dict:
-    return makeRequest("getMe")
+def getMe() -> Dict[str, Any]:
+    """
+    Get bot information.
+
+    Returns
+    -------
+    dict
+        Bot user info.
+    """
+    return _request("getMe")
