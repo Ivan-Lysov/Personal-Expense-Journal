@@ -2,6 +2,7 @@ from ..handler import Handler
 from bot.constants import MENU_ADD, STATE_ASK_CATEGORY
 from ..repo.state_repo import set_state
 
+
 class MenuCallbacksHandler(Handler):
     """
     Route top-level inline menu callback queries.
