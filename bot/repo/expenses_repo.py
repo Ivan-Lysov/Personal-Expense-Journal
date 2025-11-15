@@ -1,6 +1,7 @@
 import sqlite3
 from typing import List
 
+
 def insert_expense(conn: sqlite3.Connection,
                    user_id: int,
                    category: str,
@@ -110,3 +111,38 @@ def select_last_n(conn: sqlite3.Connection, user_id: int, n: int = 10, offset: i
         (user_id, n, offset)
     )
     return cur.fetchall()
+
+
+def sum_last_n(conn: sqlite3.Connection, user_id: int, n: int = 10) -> float:
+    """
+    Sum amounts of the last N expenses by created_at (DESC).
+
+    Parameters
+    ----------
+    conn : sqlite3.Connection
+        Open SQLite connection.
+    user_id : int
+        Telegram user identifier.
+    n : int, optional
+        Number of recent rows to sum, by default 10.
+
+    Returns
+    -------
+    float
+        Sum of amounts (0.0 if no rows).
+    """
+    cur = conn.execute(
+        """
+        SELECT COALESCE(SUM(amount), 0.0) AS s
+        FROM (
+          SELECT amount
+          FROM expenses
+          WHERE user_id = ?
+          ORDER BY datetime(created_at) DESC
+          LIMIT ?
+        ) t
+        """,
+        (user_id, n),
+    )
+    row = cur.fetchone()
+    return float(row["s"] if row and row["s"] is not None else 0.0)

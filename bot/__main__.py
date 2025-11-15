@@ -11,6 +11,8 @@ from bot.handlers.start_help import StartHelpHandler
 from bot.handlers.menu_callbacks import MenuCallbacksHandler
 from bot.handlers.unknown import UnknownCallbackHandler, UnknownTextHandler
 from bot.handlers.add_expense_steps import AddExpenseStepsHandler
+from bot.handlers.recent import RecentHandler
+from bot.handlers.sum10 import SumLast10Handler
 
 
 def main():
@@ -25,6 +27,8 @@ def main():
     dispatcher.add_handler(StartHelpHandler(tg))
     dispatcher.add_handler(MenuCallbacksHandler(tg, conn, get_user_categories))
     dispatcher.add_handler(AddExpenseStepsHandler(tg, conn, get_user_categories, get_user_stores))
+    dispatcher.add_handler(RecentHandler(tg, conn, n=10))
+    dispatcher.add_handler(SumLast10Handler(tg, conn, n=10))
     dispatcher.add_handler(UnknownCallbackHandler(tg))
     dispatcher.add_handler(UnknownTextHandler(tg))
 

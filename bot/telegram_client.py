@@ -4,8 +4,10 @@ import urllib.request
 import urllib.error
 from typing import Any, Dict, Optional
 
+
 from dotenv import load_dotenv
 load_dotenv()
+
 
 def _ensure_base_uri() -> str:
     """
@@ -68,6 +70,7 @@ def _request(method: str, **params: Any) -> Dict[str, Any]:
         desc = payload.get("description") if isinstance(payload, dict) else None
         raise RuntimeError(f"Telegram error for {method}: {desc or 'unknown error'}")
     return payload["result"]
+
 
 def getUpdates(**params: Any) -> Dict[str, Any]:
     """
@@ -179,3 +182,48 @@ def getMe() -> Dict[str, Any]:
         Bot user info.
     """
     return _request("getMe")
+
+
+def deleteMessage(chat_id: int, message_id: int) -> Dict[str, Any]:
+    """
+    Delete bot's own message in a chat.
+
+    Parameters
+    ----------
+    chat_id : int
+        Target chat id.
+    message_id : int
+        Message id to delete.
+
+    Returns
+    -------
+    dict
+        True-like result.
+    """
+    return _request("deleteMessage", chat_id=chat_id, message_id=message_id)
+
+
+def editMessageReplyMarkup(
+    chat_id: int, message_id: int, reply_markup: Optional[Dict[str, Any]] = None) \
+        -> Dict[str, Any]:
+    """
+    Edit (or clear) inline keyboard of an existing message.
+
+    Parameters
+    ----------
+    chat_id : int
+        Target chat id.
+    message_id : int
+        Message id whose keyboard to edit.
+    reply_markup : dict or None
+        New keyboard dict, or None to clear.
+
+    Returns
+    -------
+    dict
+        Edited message object (or True).
+    """
+    params: Dict[str, Any] = {"chat_id": chat_id, "message_id": message_id}
+    if reply_markup is not None:
+        params["reply_markup"] = reply_markup
+    return _request("editMessageReplyMarkup", **params)
