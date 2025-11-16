@@ -1,5 +1,6 @@
 import sqlite3
 
+
 def get_connection(db_path: str) -> sqlite3.Connection:
     """
     Open a SQLite connection with a consistent configuration.
@@ -39,6 +40,7 @@ CREATE TABLE IF NOT EXISTS user_state (
   payload TEXT    NOT NULL DEFAULT '{}'
 );
 """
+
 
 def init_schema(conn: sqlite3.Connection) -> None:
     """

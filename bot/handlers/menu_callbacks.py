@@ -43,12 +43,19 @@ class MenuCallbacksHandler(Handler):
             categories = self.get_user_categories(self.conn, user_id)
             keyboard = {
                 "inline_keyboard": [
-                    *[[{"text": name, "callback_data": f"CATEGORY::{name}"}] for name in categories],
+                    *(
+                        [
+                            {"text": name, "callback_data": f"CATEGORY::{name}"}
+                        ]
+                        for name in categories
+                    ),
                     [{"text": "➕ Новая категория", "callback_data": "CATEGORY::NEW"}],
                     [{"text": "❌ Отмена", "callback_data": "CANCEL"}],
                 ]
             }
-            self.tg.sendMessage(chat_id=chat_id, text="Выберите категорию:", reply_markup=keyboard)
+
+            self.tg.sendMessage(chat_id=chat_id, text="Выберите категорию:",
+                                reply_markup=keyboard)
 
             if hasattr(self.tg, "answerCallbackQuery"):
                 self.tg.answerCallbackQuery(callback_query_id=cq["id"])

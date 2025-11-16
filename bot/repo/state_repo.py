@@ -2,6 +2,7 @@ import json
 import sqlite3
 from typing import Tuple, Dict, Any
 
+
 def get_state(conn: sqlite3.Connection, user_id: int) -> Tuple[str, Dict[str, Any]]:
     """
     Read FSM state and payload for a given user.

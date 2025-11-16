@@ -1,5 +1,6 @@
 from ..handler import Handler
-from bot.constants import MENU_ADD, MENU_RECENT, MENU_SUM10, MENU_REPORT, MENU_CSV, MENU_HELP
+from bot.constants import MENU_ADD, MENU_RECENT, MENU_SUM10, MENU_REPORT, MENU_EXPORT_CSV, MENU_HELP
+
 
 class StartHelpHandler(Handler):
     """
@@ -39,7 +40,7 @@ class StartHelpHandler(Handler):
                  {"text": "🧾 Последние", "callback_data": MENU_RECENT}],
                 [{"text": "➗ Сумма 10", "callback_data": MENU_SUM10},
                  {"text": "📅 Отчёт (месяц)", "callback_data": MENU_REPORT}],
-                [{"text": "⬇️ CSV", "callback_data": MENU_CSV},
+                [{"text": "⬇️ CSV", "callback_data": MENU_EXPORT_CSV},
                  {"text": "ℹ️ Справка", "callback_data": MENU_HELP}],
             ]
         }
