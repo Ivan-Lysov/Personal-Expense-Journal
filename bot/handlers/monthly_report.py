@@ -1,7 +1,7 @@
 from typing import Any, Dict, List
 
 from ..handler import Handler
-from bot.constants import MENU_REPORT
+from bot.constants import MENU_REPORT, MENU_MAIN
 from bot.repo.expenses_repo import monthly_report_by_category
 
 
@@ -56,7 +56,16 @@ class MonthlyReportHandler(Handler):
         user_id = cq["from"]["id"]
 
         rows, total, month_key = monthly_report_by_category(self.conn, user_id)
-
+        keyboard = {
+            "inline_keyboard": [
+                [
+                    {
+                        "text": "🏠 В главное меню",
+                        "callback_data": MENU_MAIN,
+                    }
+                ],
+            ]
+        }
         if not rows:
             text = (
                 f"📅 Отчёт за <b>{month_key}</b>\n\n"
@@ -72,8 +81,12 @@ class MonthlyReportHandler(Handler):
             lines.append("")
             lines.append(f"Итого за месяц: <b>{total:.2f}</b>")
             text = "\n".join(lines)
-
-        self.tg.sendMessage(chat_id=chat_id, text=text, parse_mode="HTML")
+        self.tg.sendMessage(
+                chat_id=chat_id,
+                text=text,
+                parse_mode="HTML",
+                reply_markup=keyboard,
+            )
 
         if hasattr(self.tg, "answerCallbackQuery"):
             self.tg.answerCallbackQuery(callback_query_id=cq["id"])

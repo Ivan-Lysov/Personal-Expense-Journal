@@ -1,6 +1,6 @@
 from typing import Any, Dict
 from ..handler import Handler
-from bot.constants import MENU_HELP
+from bot.constants import MENU_HELP, MENU_MAIN
 
 
 class HelpMenuHandler(Handler):
@@ -30,6 +30,17 @@ class HelpMenuHandler(Handler):
         cq = update["callback_query"]
         chat_id = cq["message"]["chat"]["id"]
 
+        keyboard = {
+            "inline_keyboard": [
+                [
+                    {
+                        "text": "🏠 В главное меню",
+                        "callback_data": MENU_MAIN,
+                    }
+                ],
+            ]
+        }
+
         text = (
             "<b>ℹ️ Справка по боту учёта расходов</b>\n\n"
             "Этот бот позволяет быстро фиксировать ежедневные траты.\n"
@@ -37,7 +48,7 @@ class HelpMenuHandler(Handler):
             "• <b>➕ Добавить</b> — по шагам указать категорию, магазин, сумму \
                   и заметку.\n"
             "• <b>🧾 Последние</b> — список последних 10 записей.\n"
-            "• <b>➗ Сумма 10</b> — сумма последних 10 расходов.\n"
+            "• <b>➗ Сумма последних 10 10</b> — сумма последних 10 расходов.\n"
             "• <b>📅 Отчёт (месяц)</b> — сумма по категориям \
                 за текущий месяц.\n"
             "• <b>⬇️ CSV</b> — экспорт всех расходов в формате CSV.\n\n"
@@ -59,7 +70,8 @@ class HelpMenuHandler(Handler):
         self.tg.sendMessage(
             chat_id=chat_id,
             text=text,
-            parse_mode="HTML"
+            parse_mode="HTML",
+            reply_markup=keyboard,
         )
 
         if hasattr(self.tg, "answerCallbackQuery"):

@@ -38,7 +38,7 @@ class StartHelpHandler(Handler):
             "inline_keyboard": [
                 [{"text": "➕ Добавить", "callback_data": MENU_ADD},
                  {"text": "🧾 Последние", "callback_data": MENU_RECENT}],
-                [{"text": "➗ Сумма 10", "callback_data": MENU_SUM10},
+                [{"text": "➗ Сумма последних 10", "callback_data": MENU_SUM10},
                  {"text": "📅 Отчёт (месяц)", "callback_data": MENU_REPORT}],
                 [{"text": "⬇️ CSV", "callback_data": MENU_EXPORT_CSV},
                  {"text": "ℹ️ Справка", "callback_data": MENU_HELP}],

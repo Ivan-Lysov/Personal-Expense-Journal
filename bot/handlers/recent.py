@@ -1,6 +1,6 @@
 from typing import Any, Dict, List
 from bot.handler import Handler
-from bot.constants import MENU_RECENT
+from bot.constants import MENU_RECENT, MENU_MAIN
 from bot.repo.expenses_repo import select_last_n
 
 
@@ -27,10 +27,25 @@ class RecentHandler(Handler):
         cq = update["callback_query"]
         chat_id = cq["message"]["chat"]["id"]
         user_id = cq["from"]["id"]
+        keyboard = {
+            "inline_keyboard": [
+                [
+                    {
+                        "text": "🏠 В главное меню",
+                        "callback_data": MENU_MAIN,
+                    }
+                ],
+            ]
+        }
 
         rows = select_last_n(self.conn, user_id, n=self.n, offset=0)
         if not rows:
-            self.tg.sendMessage(chat_id=chat_id, text="Пока нет записей.")
+            self.tg.sendMessage(
+                chat_id=chat_id,
+                text="Пока нет записей.",
+                parse_mode="HTML",
+                reply_markup=keyboard,
+            )
         else:
             lines: List[str] = []
             for r in rows:
@@ -40,7 +55,12 @@ class RecentHandler(Handler):
                     + (f" — {r['note']}" if r['note'] else "")
                 )
             body = "Последние записи:\n" + "\n".join(lines)
-            self.tg.sendMessage(chat_id=chat_id, text=body)
+            self.tg.sendMessage(
+                chat_id=chat_id,
+                text=body,
+                parse_mode="HTML",
+                reply_markup=keyboard,
+            )
 
         if hasattr(self.tg, "answerCallbackQuery"):
             self.tg.answerCallbackQuery(callback_query_id=cq["id"])

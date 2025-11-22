@@ -2,7 +2,7 @@ from typing import Any, Dict, List
 import html
 
 from ..handler import Handler
-from bot.constants import MENU_EXPORT_CSV
+from bot.constants import MENU_EXPORT_CSV, MENU_MAIN
 from bot.repo.expenses_repo import select_all_for_user
 
 
@@ -60,12 +60,28 @@ class CsvExportHandler(Handler):
 
         rows = select_all_for_user(self.conn, user_id)
 
+        keyboard = {
+            "inline_keyboard": [
+                [
+                    {
+                        "text": "🏠 В главное меню",
+                        "callback_data": MENU_MAIN,
+                    }
+                ],
+            ]
+        }
+
         if not rows:
             text = (
                 "⬇️ Экспорт CSV\n\n"
                 "Пока нет расходов для экспорта."
             )
-            self.tg.sendMessage(chat_id=chat_id, text=text, parse_mode="HTML")
+            self.tg.sendMessage(
+                chat_id=chat_id,
+                text=text,
+                parse_mode="HTML",
+                reply_markup=keyboard,
+            )
         else:
             csv_text = self._build_csv(rows)
             # Escape for HTML and wrap into <code> block
@@ -75,7 +91,12 @@ class CsvExportHandler(Handler):
                 "Скопируйте содержимое блока и сохраните в файл, например <b>data.csv</b>:\n\n"
                 f"<code>{safe_csv}</code>"
             )
-            self.tg.sendMessage(chat_id=chat_id, text=text, parse_mode="HTML")
+            self.tg.sendMessage(
+                chat_id=chat_id,
+                text=text,
+                parse_mode="HTML",
+                reply_markup=keyboard,
+            )
 
         if hasattr(self.tg, "answerCallbackQuery"):
             self.tg.answerCallbackQuery(callback_query_id=cq["id"])

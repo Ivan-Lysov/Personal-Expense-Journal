@@ -7,6 +7,8 @@ from bot.constants import (
     STATE_ASK_AMOUNT,
     STATE_ASK_NOTE,
     STATE_CONFIRM,
+    MENU_ADD,
+    MENU_MAIN,
 )
 from bot.repo.state_repo import get_state, set_state, reset_state
 from bot.repo.expenses_repo import insert_expense
@@ -213,14 +215,48 @@ class AddExpenseStepsHandler(Handler):
                 # Clean UX: delete last prompt; reset; say error.
                 self._delete_last(chat_id, user_id)
                 reset_state(self.conn, user_id)
-                self._say_html(chat_id, "Не удалось сохранить — отсутствуют данные. Попробуйте снова: <b>/start</b>.")
+                self._say_html(
+                    chat_id,
+                    "Не удалось сохранить — отсутствуют данные. "
+                    "Попробуйте снова: <b>/start</b>."
+                )
                 return False
 
-            insert_expense(self.conn, user_id, str(category), str(store), float(amount), str(note or ""))
+            insert_expense(
+                self.conn,
+                user_id,
+                str(category),
+                str(store),
+                float(amount),
+                str(note or ""),
+            )
             # Clean up last prompt and reset FSM
             self._delete_last(chat_id, user_id)
             reset_state(self.conn, user_id)
-            self._say_html(chat_id, "Готово ✔️ <b>Запись сохранена.</b>")
+
+            keyboard = {
+                "inline_keyboard": [
+                    [
+                        {
+                            "text": "➕ Добавить ещё расход",
+                            "callback_data": MENU_ADD,
+                        }
+                    ],
+                    [
+                        {
+                            "text": "🏠 В главное меню",
+                            "callback_data": MENU_MAIN,
+                        }
+                    ],
+                ]
+            }
+
+            self.tg.sendMessage(
+                chat_id=chat_id,
+                text="Готово ✔️ <b>Запись сохранена.</b>",
+                parse_mode="HTML",
+                reply_markup=keyboard,
+            )
             return False
 
         if value == "CANCEL":
@@ -228,9 +264,7 @@ class AddExpenseStepsHandler(Handler):
             reset_state(self.conn, user_id)
             self._say_html(chat_id, "Отменено. Возврат в меню: <b>/start</b>")
             return False
-
-        return True
-
+    
     # ---------- Text handlers (by expect_text) ----------
 
     def _text_new_category(self, chat_id: int, user_id: int, text: str, payload: Dict[str, Any]) -> bool:
