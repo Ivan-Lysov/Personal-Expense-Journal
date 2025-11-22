@@ -26,6 +26,8 @@ def setup_logging() -> logging.Logger:
     """
     Configure root logger for the bot.
 
+    Uses single env variable LOG_LEVEL: DEBUG, INFO, WARNING, ERROR, CRITICAL.
+
     Returns
     -------
     logging.Logger
@@ -45,14 +47,13 @@ def setup_logging() -> logging.Logger:
 def main() -> None:
     """Entry point: env → DB → handlers → long polling."""
     logger = setup_logging()
-    load_dotenv()  # лишним не будет, но telegram_client тоже вызывает load_dotenv
+    load_dotenv()
 
     db_path = os.environ.get("DB_PATH", "budget.sqlite3")
     conn = get_connection(db_path)
     init_schema(conn)
 
     dispatcher = Dispatcher()
-    # Везде передаём модуль tg как "клиент"
     dispatcher.add_handler(StartHelpHandler(tg))
     dispatcher.add_handler(MenuCallbacksHandler(tg, conn, get_user_categories))
     dispatcher.add_handler(
