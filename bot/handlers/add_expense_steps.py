@@ -13,7 +13,9 @@ from bot.constants import (
 from bot.repo.state_repo import get_state, set_state, reset_state
 from bot.repo.expenses_repo import insert_expense
 from bot.services.parsing import parse_amount
+import logging
 
+logger = logging.getLogger("expense_bot.add_expense")
 
 def parse_callback(data: str) -> Tuple[str, str]:
     """
@@ -146,11 +148,11 @@ class AddExpenseStepsHandler(Handler):
         return handler(chat_id, user_id, text, payload)
 
     def _cb_cancel(self, chat_id: int, user_id: int, _: str, __: Dict[str, Any]) -> bool:
-        # Delete last prompt first (payload still has last_msg_id), then reset.
+        logger.info("User %s cancelled expense flow", user_id)
         self._delete_last(chat_id, user_id)
         reset_state(self.conn, user_id)
         self._say_html(chat_id, "Операция отменена. Откройте меню командой <b>/start</b>.")
-        return False  # consumed
+        return False
 
     def _cb_category(self, chat_id: int, user_id: int, value: str, _: Dict[str, Any]) -> bool:
         state, payload = get_state(self.conn, user_id)
@@ -175,6 +177,7 @@ class AddExpenseStepsHandler(Handler):
             return True
 
         if value == "NEW":
+            logger.debug("User %s chose NEW store", user_id)
             payload["expect_text"] = "STORE"
             set_state(self.conn, user_id, STATE_ASK_STORE, payload)
             self._send_and_remember(chat_id, user_id, "Введите <b>новый магазин</b> текстом. Или нажмите «❌ Отмена».")
@@ -229,6 +232,13 @@ class AddExpenseStepsHandler(Handler):
                 str(store),
                 float(amount),
                 str(note or ""),
+            )
+            logger.info(
+                "Inserted expense user_id=%s category=%r store=%r amount=%.2f",
+                user_id,
+                category,
+                store,
+                float(amount),
             )
             # Clean up last prompt and reset FSM
             self._delete_last(chat_id, user_id)

@@ -4,7 +4,10 @@ from typing import Any, Dict, List
 import urllib.request
 from urllib.error import HTTPError
 
+import logging
 from dotenv import load_dotenv
+
+logger = logging.getLogger("expense_bot.telegram")
 
 load_dotenv()
 
@@ -39,6 +42,8 @@ def _request(method: str, **params) -> Dict[str, Any]:
     """
     data = json.dumps(params).encode("utf-8")
 
+    logger.debug("Request %s params=%s", method, params)
+
     req = urllib.request.Request(
         url=f"{BASE_URI}/{method}",
         data=data,
@@ -54,6 +59,13 @@ def _request(method: str, **params) -> Dict[str, Any]:
             error_body = e.read().decode("utf-8", errors="ignore")
         except Exception:
             error_body = "<no body>"
+        logger.error(
+            "HTTPError for %s: %s %s, body=%s",
+            method,
+            e.code,
+            e.reason,
+            error_body,
+        )
         raise RuntimeError(
             f"HTTPError for {method}: {e.code} {e.reason}, body={error_body}"
         ) from e
@@ -62,10 +74,17 @@ def _request(method: str, **params) -> Dict[str, Any]:
 
     if not payload.get("ok", False):
         desc = payload.get("description", "no description")
+        logger.error(
+            "Telegram API error for %s: %s (payload=%s)",
+            method,
+            desc,
+            payload,
+        )
         raise RuntimeError(
             f"Telegram API error for {method}: {desc} (payload={payload})"
         )
 
+    logger.debug("Response %s ok", method)
     return payload["result"]
 
 
