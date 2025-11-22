@@ -1,34 +1,100 @@
 from typing import Any, Dict, List
+import logging
+import sqlite3
+
 from bot.handler import Handler
-from bot.constants import MENU_RECENT, MENU_MAIN
-from bot.repo.expenses_repo import select_last_n
+from bot.constants import MENU_ADD, MENU_MAIN, MENU_RECENT
+
+logger = logging.getLogger("expense_bot.recent")
 
 
 class RecentHandler(Handler):
     """
-    Handle MENU_RECENT callback: show last 10 expenses.
+    Show recent expenses for the user with simple pagination.
 
-    Notes
+    Logic
     -----
-    - Minimal plain text list. Later we can add pagination ("More") if needed.
+    • Handles MENU_RECENT (first page, offset=0).
+    • Handles "RECENT_MORE::<offset>" for next pages.
+    • Each page shows up to `n` records, ordered by created_at DESC.
+    • If there are potentially more records, shows "Показать ещё" button.
+    • Footer always has:
+        - "➕ Добавить расход"
+        - "🏠 В главное меню"
     """
 
-    def __init__(self, telegram_client, conn, n: int = 10):
+    def __init__(self, telegram_client: Any, conn: sqlite3.Connection, n: int = 10) -> None:
+        """
+        Parameters
+        ----------
+        telegram_client : Any
+            Thin Telegram client module (sendMessage, answerCallbackQuery, ...).
+        conn : sqlite3.Connection
+            Open SQLite connection.
+        n : int, optional
+            Page size (number of records per page), by default 10.
+        """
         self.tg = telegram_client
         self.conn = conn
         self.n = n
 
     def can_handle(self, update: Dict[str, Any]) -> bool:
-        if "callback_query" not in update:
+        """
+        Handle only callback_query with MENU_RECENT or RECENT_MORE::<offset>.
+        """
+        cq = update.get("callback_query")
+        if not cq:
             return False
-        return update["callback_query"].get("data") == MENU_RECENT
+        data = cq.get("data", "")
+        return data == MENU_RECENT or data.startswith("RECENT_MORE::")
 
     def handle(self, update: Dict[str, Any]) -> bool:
+        """
+        Render one page of recent expenses.
+
+        Returns
+        -------
+        bool
+            False, as this handler fully consumes the update.
+        """
         cq = update["callback_query"]
         chat_id = cq["message"]["chat"]["id"]
         user_id = cq["from"]["id"]
-        keyboard = {
+        data = cq.get("data", "")
+
+        if data == MENU_RECENT:
+            offset = 0
+        else:
+            # data looks like "RECENT_MORE::10"
+            try:
+                _, raw_offset = data.split("::", 1)
+                offset = int(raw_offset)
+            except Exception:
+                logger.warning("Failed to parse offset from data=%r, fallback to 0", data)
+                offset = 0
+
+        logger.debug("RecentHandler: user_id=%s offset=%s", user_id, offset)
+        self._render_page(chat_id, user_id, offset)
+
+        if hasattr(self.tg, "answerCallbackQuery"):
+            self.tg.answerCallbackQuery(callback_query_id=cq["id"])
+
+        return False
+
+    # ---------- Internal helpers ----------
+
+    def _footer_keyboard(self) -> Dict[str, Any]:
+        """
+        Common footer keyboard with "add expense" and "main menu" buttons.
+        """
+        return {
             "inline_keyboard": [
+                [
+                    {
+                        "text": "➕ Добавить расход",
+                        "callback_data": MENU_ADD,
+                    }
+                ],
                 [
                     {
                         "text": "🏠 В главное меню",
@@ -38,30 +104,125 @@ class RecentHandler(Handler):
             ]
         }
 
-        rows = select_last_n(self.conn, user_id, n=self.n, offset=0)
-        if not rows:
+    def _render_page(self, chat_id: int, user_id: int, offset: int) -> None:
+        """
+        Fetch and render one "page" of recent expenses.
+
+        Parameters
+        ----------
+        chat_id : int
+            Telegram chat id.
+        user_id : int
+            Telegram user id.
+        offset : int
+            Number of records to skip from the newest ones.
+        """
+        rows = self._select_recent_slice(user_id, limit=self.n, offset=offset)
+
+        if not rows and offset == 0:
+            text = (
+                "🕘 Последние записи\n\n"
+                "Пока нет ни одной записи. "
+                "Добавьте первую через меню «➕ Добавить расход»."
+            )
+            keyboard = self._footer_keyboard()
             self.tg.sendMessage(
                 chat_id=chat_id,
-                text="Пока нет записей.",
+                text=text,
                 parse_mode="HTML",
                 reply_markup=keyboard,
             )
-        else:
-            lines: List[str] = []
-            for r in rows:
-                # created_at is UTC ISO-8601, we just show as-is
-                lines.append(
-                    f"{r['created_at']} — {r['category']} @ {r['store']} : {r['amount']}"
-                    + (f" — {r['note']}" if r['note'] else "")
-                )
-            body = "Последние записи:\n" + "\n".join(lines)
+            return
+
+        if not rows:
+            text = "Больше записей нет 🙂"
+            keyboard = self._footer_keyboard()
             self.tg.sendMessage(
                 chat_id=chat_id,
-                text=body,
+                text=text,
                 parse_mode="HTML",
                 reply_markup=keyboard,
+            )
+            return
+
+        # Build lines: date · amount · category · store · (note)
+        lines: List[str] = ["🕘 Последние записи:\n"]
+        for created_at, category, store, amount, note in rows:
+            # created_at: "YYYY-MM-DD HH:MM:SS" → cut to minutes
+            ts = (created_at or "")[:16]
+            try:
+                amt_str = f"{float(amount):.2f}"
+            except Exception:
+                amt_str = str(amount)
+
+            line = f"{ts} · {amt_str} ₽ · {category} · {store}"
+            if note:
+                line += f" · ({note})"
+            lines.append(line)
+
+        text = "\n".join(lines)
+
+        keyboard = self._footer_keyboard()
+
+        if len(rows) == self.n:
+            next_offset = offset + self.n
+            keyboard["inline_keyboard"].insert(
+                0,
+                [
+                    {
+                        "text": "Показать ещё",
+                        "callback_data": f"RECENT_MORE::{next_offset}",
+                    }
+                ],
             )
 
-        if hasattr(self.tg, "answerCallbackQuery"):
-            self.tg.answerCallbackQuery(callback_query_id=cq["id"])
-        return False
+        self.tg.sendMessage(
+            chat_id=chat_id,
+            text=text,
+            parse_mode="HTML",
+            reply_markup=keyboard,
+        )
+
+    def _select_recent_slice(
+        self,
+        user_id: int,
+        limit: int,
+        offset: int = 0,
+    ) -> List[tuple]:
+        """
+        Fetch a slice of recent expenses for the user.
+
+        Parameters
+        ----------
+        user_id : int
+            Telegram user id.
+        limit : int
+            Max number of rows to return.
+        offset : int, optional
+            Number of newest rows to skip, by default 0.
+
+        Returns
+        -------
+        list of tuple
+            Rows (created_at, category, store, amount, note) ordered by created_at DESC.
+        """
+        cur = self.conn.cursor()
+        cur.execute(
+            """
+            SELECT created_at, category, store, amount, note
+            FROM expenses
+            WHERE user_id = ?
+            ORDER BY created_at DESC
+            LIMIT ? OFFSET ?
+            """,
+            (user_id, limit, offset),
+        )
+        rows = cur.fetchall()
+        logger.debug(
+            "Recent slice: user_id=%s offset=%s limit=%s got=%s",
+            user_id,
+            offset,
+            limit,
+            len(rows),
+        )
+        return rows
