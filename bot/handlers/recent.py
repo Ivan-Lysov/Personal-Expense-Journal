@@ -65,7 +65,14 @@ class RecentHandler(Handler):
         if data == MENU_RECENT:
             offset = 0
         else:
-            # data looks like "RECENT_MORE::10"
+            try:
+                self.tg.deleteMessage(
+                    chat_id=chat_id,
+                    message_id=cq["message"]["message_id"],
+                )
+            except Exception:
+                logger.debug("Failed to delete previous recent message", exc_info=True)
+
             try:
                 _, raw_offset = data.split("::", 1)
                 offset = int(raw_offset)
@@ -145,10 +152,10 @@ class RecentHandler(Handler):
             )
             return
 
-        # Build lines: date · amount · category · store · (note)
+        # Build lines: date  amount  category  store  (note)
         lines: List[str] = ["🕘 Последние записи:\n"]
         for created_at, category, store, amount, note in rows:
-            # created_at: "YYYY-MM-DD HH:MM:SS" → cut to minutes
+            # created_at: "YYYY-MM-DD HH:MM"
             ts = (created_at or "")[:16]
             try:
                 amt_str = f"{float(amount):.2f}"
