@@ -1,5 +1,5 @@
 from ..handler import Handler
-from bot.constants import MENU_ADD, MENU_RECENT, MENU_SUM10, MENU_REPORT, MENU_EXPORT_CSV, MENU_HELP
+from bot.services.keyboards import main_menu_keyboard
 
 
 class StartHelpHandler(Handler):
@@ -34,15 +34,10 @@ class StartHelpHandler(Handler):
             )
             self.tg.sendMessage(chat_id=chat_id, text=help_text)
 
-        keyboard = {
-            "inline_keyboard": [
-                [{"text": "➕ Добавить", "callback_data": MENU_ADD},
-                 {"text": "🧾 Последние", "callback_data": MENU_RECENT}],
-                [{"text": "➗ Сумма последних 10", "callback_data": MENU_SUM10},
-                 {"text": "📅 Отчёт (месяц)", "callback_data": MENU_REPORT}],
-                [{"text": "⬇️ CSV", "callback_data": MENU_EXPORT_CSV},
-                 {"text": "ℹ️ Справка", "callback_data": MENU_HELP}],
-            ]
-        }
-        self.tg.sendMessage(chat_id=chat_id, text="Главное меню:", reply_markup=keyboard)
+        self.tg.sendMessage(
+            chat_id=chat_id,
+            text="Главное меню:",
+            reply_markup=main_menu_keyboard(),
+            parse_mode="HTML",
+        )
         return False

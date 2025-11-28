@@ -1,8 +1,9 @@
 from ..handler import Handler
 from bot.constants import MENU_ADD, STATE_ASK_CATEGORY, MENU_MAIN, MENU_HELP, MENU_RECENT, MENU_SUM10, \
       MENU_REPORT, MENU_EXPORT_CSV
+from bot.services.keyboards import main_menu_keyboard
 from ..repo.state_repo import set_state
-from typing import Any
+from typing import Any, Dict
 
 
 class MenuCallbacksHandler(Handler):
@@ -50,6 +51,9 @@ class MenuCallbacksHandler(Handler):
         chat_id = cq["message"]["chat"]["id"]
         user_id = cq["from"]["id"]
 
+        if data in {MENU_ADD, MENU_RECENT, MENU_SUM10, MENU_REPORT, MENU_EXPORT_CSV, MENU_HELP, MENU_MAIN}:
+            self._delete_menu_message(cq)
+
         if data == MENU_ADD:
             # Transition to ASK_CATEGORY (payload may contain last_msg_id)
             categories = self.get_user_categories(self.conn, user_id)
@@ -88,16 +92,7 @@ class MenuCallbacksHandler(Handler):
             return False
 
         if data == MENU_MAIN:
-            keyboard = {
-                "inline_keyboard": [
-                    [{"text": "➕ Добавить расход",    "callback_data": MENU_ADD}],
-                    [{"text": "🧾 Последние записи",  "callback_data": MENU_RECENT}],
-                    [{"text": "➗ Сумма последних 10", "callback_data": MENU_SUM10}],
-                    [{"text": "📅 Отчёт за месяц",    "callback_data": MENU_REPORT}],
-                    [{"text": "⬇️ Экспорт CSV",       "callback_data": MENU_EXPORT_CSV}],
-                    [{"text": "ℹ️ Справка",           "callback_data": MENU_HELP}],
-                ]
-            }
+            keyboard = main_menu_keyboard()
             self.tg.sendMessage(
                 chat_id=chat_id,
                 text="Главное меню:",
@@ -108,3 +103,25 @@ class MenuCallbacksHandler(Handler):
             return False
 
         return True
+
+    def _delete_menu_message(self, cq: Dict[str, Any]) -> None:
+        """
+        Delete the message that contained the pressed main-menu button.
+
+        Parameters
+        ----------
+        cq : dict
+            Telegram callback_query object.
+        """
+        msg = cq.get("message") or {}
+        chat = msg.get("chat") or {}
+        chat_id = chat.get("id")
+        msg_id = msg.get("message_id")
+
+        if chat_id is None or msg_id is None:
+            return
+
+        try:
+            self.tg.deleteMessage(chat_id=chat_id, message_id=msg_id)
+        except Exception:
+            pass

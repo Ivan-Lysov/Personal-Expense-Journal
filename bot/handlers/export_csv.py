@@ -1,9 +1,15 @@
 from typing import Any, Dict, List
+import datetime
 import html
+import logging
+import io
+import csv
 
 from ..handler import Handler
-from bot.constants import MENU_EXPORT_CSV, MENU_MAIN
+from bot.constants import MENU_EXPORT_CSV, MENU_ADD, MENU_MAIN
 from bot.repo.expenses_repo import select_all_for_user
+
+logger = logging.getLogger("expense_bot.export_csv")
 
 
 class CsvExportHandler(Handler):
@@ -47,7 +53,9 @@ class CsvExportHandler(Handler):
 
     def handle(self, update: Dict[str, Any]) -> bool:
         """
-        Build CSV export for the user and send it as a text message.
+        Build CSV export for the user and send it as a file (sendDocument).
+
+        Falls back to text block with <code> if file upload fails.
 
         Returns
         -------
@@ -60,77 +68,103 @@ class CsvExportHandler(Handler):
 
         rows = select_all_for_user(self.conn, user_id)
 
-        keyboard = {
-            "inline_keyboard": [
-                [
-                    {
-                        "text": "🏠 В главное меню",
-                        "callback_data": MENU_MAIN,
-                    }
-                ],
-            ]
-        }
-
         if not rows:
             text = (
                 "⬇️ Экспорт CSV\n\n"
                 "Пока нет расходов для экспорта."
             )
-            self.tg.sendMessage(
-                chat_id=chat_id,
-                text=text,
-                parse_mode="HTML",
-                reply_markup=keyboard,
-            )
+            self.tg.sendMessage(chat_id=chat_id, text=text, parse_mode="HTML")
         else:
             csv_text = self._build_csv(rows)
-            # Escape for HTML and wrap into <code> block
-            safe_csv = html.escape(csv_text, quote=False)
-            text = (
+
+            csv_text_with_bom = "\ufeff" + csv_text
+            csv_bytes = csv_text_with_bom.encode("utf-8")
+
+            today = datetime.date.today().isoformat()
+            filename = f"expenses_{today}.csv"
+
+            caption = (
                 "⬇️ Экспорт CSV\n\n"
-                "Скопируйте содержимое блока и сохраните в файл, например <b>data.csv</b>:\n\n"
-                f"<code>{safe_csv}</code>"
+                f"Файл <b>{filename}</b> содержит все ваши расходы "
+                "на момент выгрузки."
             )
-            self.tg.sendMessage(
-                chat_id=chat_id,
-                text=text,
-                parse_mode="HTML",
-                reply_markup=keyboard,
-            )
+
+            try:
+                self.tg.sendDocument(
+                    chat_id=chat_id,
+                    filename=filename,
+                    content=csv_bytes,
+                    caption=caption,
+                    parse_mode="HTML",
+                    reply_markup=self._footer_keyboard(),
+                )
+            except Exception as exc:
+                logger.exception("sendDocument failed, fallback to text CSV: %r", exc)
+
+                safe_csv = html.escape(csv_text, quote=False)
+                text = (
+                    "⬇️ Экспорт CSV (текстовый вариант)\n\n"
+                    "Скопируйте содержимое блока и сохраните в файл, "
+                    f"например <b>{filename}</b>:\n\n"
+                    f"<code>{safe_csv}</code>"
+                )
+                self.tg.sendMessage(
+                    chat_id=chat_id,
+                    text=text,
+                    parse_mode="HTML",
+                    reply_markup=self._footer_keyboard(),
+                )
 
         if hasattr(self.tg, "answerCallbackQuery"):
             self.tg.answerCallbackQuery(callback_query_id=cq["id"])
 
         return False
 
-    def _build_csv(self, rows: List[Any]) -> str:
+    def _footer_keyboard(self) -> dict:
         """
-        Build CSV string (header + rows) from expense rows.
-
-        Parameters
-        ----------
-        rows : list
-            Rows from `select_all_for_user`, each with
-            created_at, category, store, amount, note.
-
-        Returns
-        -------
-        str
-            CSV data as a single string with '\n' separators.
+        Inline keyboard used under report/export messages.
         """
-        header = ["created_at", "category", "store", "amount", "note"]
-        lines: List[str] = []
-        lines.append(self._join_csv_row(header))
+        return {
+            "inline_keyboard": [
+                [
+                    {"text": "➕ Добавить расход", "callback_data": MENU_ADD},
+                ],
+                [
+                    {"text": "🏠 В главное меню", "callback_data": MENU_MAIN},
+                ],
+            ]
+        }
 
-        for r in rows:
-            created_at = str(r["created_at"])
-            category = str(r["category"] if r["category"] is not None else "")
-            store = str(r["store"] if r["store"] is not None else "")
-            amount = f"{float(r['amount']):.2f}"
-            note = str(r["note"] if r["note"] is not None else "")
-            lines.append(self._join_csv_row([created_at, category, store, amount, note]))
+    def _build_csv(self, rows: list[tuple]) -> str:
+        """
+        Build CSV text for all user's expenses.
 
-        return "\n".join(lines)
+        Format:
+        - Delimiter: ';'  (better for Excel in ru-RU locale)
+        - Encoding: UTF-8 (BOM will be added before sending)
+        - Header: created_at;category;store;amount;note
+        """
+        buf = io.StringIO()
+        writer = csv.writer(
+            buf,
+            delimiter=";",
+            lineterminator="\n",
+            quoting=csv.QUOTE_MINIMAL,
+        )
+
+        writer.writerow(["created_at", "category", "store", "amount", "note"])
+
+        for created_at, category, store, amount, note in rows:
+            amount_str = f"{float(amount):.2f}"
+            writer.writerow([
+                created_at,
+                category or "",
+                store or "",
+                amount_str,
+                note or "",
+            ])
+
+        return buf.getvalue()
 
     def _join_csv_row(self, fields: List[str]) -> str:
         """

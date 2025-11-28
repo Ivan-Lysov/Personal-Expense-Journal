@@ -17,6 +17,7 @@ import logging
 
 logger = logging.getLogger("expense_bot.add_expense")
 
+
 def parse_callback(data: str) -> Tuple[str, str]:
     """
     Parse callback_data into (kind, value).
@@ -162,7 +163,12 @@ class AddExpenseStepsHandler(Handler):
         if value == "NEW":
             payload["expect_text"] = "CATEGORY"
             set_state(self.conn, user_id, STATE_ASK_CATEGORY, payload)
-            self._send_and_remember(chat_id, user_id, "Введите <b>новую категорию</b> текстом. Или нажмите «❌ Отмена».")
+            self._send_and_remember(
+                chat_id,
+                user_id,
+                "Введите <b>новую категорию</b> текстом. Или нажмите «❌ Отмена».",
+                reply_markup=self._cancel_keyboard(),
+            )
             return False
 
         payload["category"] = value
@@ -177,10 +183,14 @@ class AddExpenseStepsHandler(Handler):
             return True
 
         if value == "NEW":
-            logger.debug("User %s chose NEW store", user_id)
             payload["expect_text"] = "STORE"
             set_state(self.conn, user_id, STATE_ASK_STORE, payload)
-            self._send_and_remember(chat_id, user_id, "Введите <b>новый магазин</b> текстом. Или нажмите «❌ Отмена».")
+            self._send_and_remember(
+                chat_id,
+                user_id,
+                "Введите <b>новый магазин</b> текстом. Или нажмите «❌ Отмена».",
+                reply_markup=self._cancel_keyboard(),
+            )
             return False
 
         payload["store"] = value
@@ -274,12 +284,15 @@ class AddExpenseStepsHandler(Handler):
             reset_state(self.conn, user_id)
             self._say_html(chat_id, "Отменено. Возврат в меню: <b>/start</b>")
             return False
-    
+
     # ---------- Text handlers (by expect_text) ----------
 
     def _text_new_category(self, chat_id: int, user_id: int, text: str, payload: Dict[str, Any]) -> bool:
         if not text:
-            self._send_and_remember(chat_id, user_id, "Категория не должна быть пустой. Введите название или нажмите «❌ Отмена».")
+            self._send_and_remember(chat_id, user_id,
+                                    "Категория не должна быть пустой. Введите название или нажмите «❌ Отмена».",
+                                    reply_markup=self._cancel_keyboard()
+                                    )
             return False
         payload["category"] = text
         payload["expect_text"] = None
@@ -289,7 +302,10 @@ class AddExpenseStepsHandler(Handler):
 
     def _text_new_store(self, chat_id: int, user_id: int, text: str, payload: Dict[str, Any]) -> bool:
         if not text:
-            self._send_and_remember(chat_id, user_id, "Магазин не должен быть пустым. Введите название или нажмите «❌ Отмена».")
+            self._send_and_remember(chat_id, user_id, 
+                                    "Магазин не должен быть пустым. Введите название или нажмите «❌ Отмена».",
+                                    reply_markup=self._cancel_keyboard()
+                                    )
             return False
         payload["store"] = text
         payload["expect_text"] = "AMOUNT"
@@ -300,7 +316,8 @@ class AddExpenseStepsHandler(Handler):
     def _text_amount(self, chat_id: int, user_id: int, text: str, payload: Dict[str, Any]) -> bool:
         amount = parse_amount(text)
         if amount is None:
-            self._send_and_remember(chat_id, user_id, "Сумма должна быть <b>положительным числом</b>. Пример: <b>125.50</b>")
+            self._send_and_remember(chat_id, user_id, 
+                                    "Сумма должна быть <b>положительным числом</b>. Пример: <b>125.50</b>")
             return False
         payload["amount"] = amount
         payload["expect_text"] = "NOTE"
@@ -348,7 +365,8 @@ class AddExpenseStepsHandler(Handler):
                 [{"text": "❌ Отмена", "callback_data": "CANCEL"}],
             ]
         }
-        self._send_and_remember(chat_id, user_id, "<b>Введите заметку</b> (или нажмите «Пропустить заметку»):", keyboard)
+        self._send_and_remember(chat_id, user_id,
+                                "<b>Введите заметку</b> (или нажмите «Пропустить заметку»):", keyboard)
 
     def _render_confirm(self, chat_id: int, user_id: int, payload: Dict[str, Any]) -> None:
         category = payload.get("category", "—")
@@ -418,6 +436,16 @@ class AddExpenseStepsHandler(Handler):
                 self.tg.deleteMessage(chat_id=chat_id, message_id=last_id)
             except Exception:
                 pass
+
+    def _cancel_keyboard(self) -> Dict[str, Any]:
+        """
+        Inline keyboard with a single 'Cancel' button.
+        """
+        return {
+            "inline_keyboard": [
+                [{"text": "❌ Отмена", "callback_data": "CANCEL"}],
+            ]
+        }
 
     def _say_html(self, chat_id: int, text: str) -> None:
         """
