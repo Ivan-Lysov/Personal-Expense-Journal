@@ -1,25 +1,22 @@
-
 import logging
 import os
 
 from dotenv import load_dotenv
 
-from bot.repo.db import get_connection, init_schema
-from bot.dispatcher import Dispatcher
-from bot.long_polling import start_long_polling
 import bot.telegram_client as tg
-
-from bot.services.vocab import get_user_categories, get_user_stores
-
-from bot.handlers.start_help import StartHelpHandler
-from bot.handlers.menu_callbacks import MenuCallbacksHandler
+from bot.dispatcher import Dispatcher
 from bot.handlers.add_expense_steps import AddExpenseStepsHandler
-from bot.handlers.recent import RecentHandler
-from bot.handlers.sum10 import SumLast10Handler
-from bot.handlers.monthly_report import MonthlyReportHandler
 from bot.handlers.export_csv import CsvExportHandler
 from bot.handlers.help_menu import HelpMenuHandler
+from bot.handlers.menu_callbacks import MenuCallbacksHandler
+from bot.handlers.monthly_report import MonthlyReportHandler
+from bot.handlers.recent import RecentHandler
+from bot.handlers.start_help import StartHelpHandler
+from bot.handlers.sum10 import SumLast10Handler
 from bot.handlers.unknown import UnknownCallbackHandler, UnknownTextHandler
+from bot.long_polling import start_long_polling
+from bot.repo.db import get_connection, init_schema
+from bot.services.vocab import get_user_categories, get_user_stores
 
 
 def setup_logging() -> logging.Logger:
@@ -56,9 +53,7 @@ def main() -> None:
     dispatcher = Dispatcher()
     dispatcher.add_handler(StartHelpHandler(tg))
     dispatcher.add_handler(MenuCallbacksHandler(tg, conn, get_user_categories))
-    dispatcher.add_handler(
-        AddExpenseStepsHandler(tg, conn, get_user_categories, get_user_stores)
-    )
+    dispatcher.add_handler(AddExpenseStepsHandler(tg, conn, get_user_categories, get_user_stores))
     dispatcher.add_handler(RecentHandler(tg, conn, n=10))
     dispatcher.add_handler(SumLast10Handler(tg, conn, n=10))
     dispatcher.add_handler(MonthlyReportHandler(tg, conn))

@@ -1,9 +1,9 @@
-from typing import Any, Dict, List
 import logging
 import sqlite3
+from typing import Any, Dict, List
 
-from bot.handler import Handler
 from bot.constants import MENU_ADD, MENU_MAIN, MENU_RECENT
+from bot.handler import Handler
 
 logger = logging.getLogger("expense_bot.recent")
 

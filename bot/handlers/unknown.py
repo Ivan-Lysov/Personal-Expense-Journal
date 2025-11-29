@@ -1,5 +1,6 @@
 from ..handler import Handler
 
+
 class UnknownCallbackHandler(Handler):
     """
     Catch-all for callback_query that were not handled by previous handlers.

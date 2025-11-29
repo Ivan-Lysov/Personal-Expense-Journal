@@ -1,4 +1,4 @@
-from bot.constants import MENU_ADD, MENU_RECENT, MENU_SUM10, MENU_REPORT, MENU_EXPORT_CSV, MENU_HELP
+from bot.constants import MENU_ADD, MENU_EXPORT_CSV, MENU_HELP, MENU_RECENT, MENU_REPORT, MENU_SUM10
 
 
 def main_menu_keyboard() -> dict:

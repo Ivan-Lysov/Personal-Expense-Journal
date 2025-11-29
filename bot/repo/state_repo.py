@@ -1,6 +1,6 @@
 import json
 import sqlite3
-from typing import Tuple, Dict, Any
+from typing import Any, Dict, Tuple
 
 
 def get_state(conn: sqlite3.Connection, user_id: int) -> Tuple[str, Dict[str, Any]]:
@@ -53,7 +53,7 @@ def set_state(conn: sqlite3.Connection, user_id: int, state: str, payload: Dict[
     conn.execute(
         "INSERT INTO user_state(user_id, state, payload) VALUES (?, ?, ?) "
         "ON CONFLICT(user_id) DO UPDATE SET state=excluded.state, payload=excluded.payload",
-        (user_id, state, payload_str)
+        (user_id, state, payload_str),
     )
     conn.commit()
 
@@ -76,6 +76,6 @@ def reset_state(conn: sqlite3.Connection, user_id: int) -> None:
     conn.execute(
         "INSERT INTO user_state(user_id, state, payload) VALUES (?, 'IDLE', '{}') "
         "ON CONFLICT(user_id) DO UPDATE SET state='IDLE', payload='{}'",
-        (user_id,)
+        (user_id,),
     )
     conn.commit()

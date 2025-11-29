@@ -1,6 +1,6 @@
 # bot/dispatcher.py
-from typing import List, Dict, Any
 import logging
+from typing import Any, Dict, List
 
 from bot.handler import Handler
 

@@ -1,5 +1,6 @@
-from ..handler import Handler
 from bot.services.keyboards import main_menu_keyboard
+
+from ..handler import Handler
 
 
 class StartHelpHandler(Handler):

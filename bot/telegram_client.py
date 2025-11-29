@@ -1,11 +1,11 @@
 import json
+import logging
 import os
 import secrets
-from typing import Any, Dict, List
 import urllib.request
+from typing import Any, Dict, List
 from urllib.error import HTTPError
 
-import logging
 from dotenv import load_dotenv
 
 logger = logging.getLogger("expense_bot.telegram")
@@ -67,9 +67,7 @@ def _request(method: str, **params) -> Dict[str, Any]:
             e.reason,
             error_body,
         )
-        raise RuntimeError(
-            f"HTTPError for {method}: {e.code} {e.reason}, body={error_body}"
-        ) from e
+        raise RuntimeError(f"HTTPError for {method}: {e.code} {e.reason}, body={error_body}") from e
 
     payload = json.loads(body)
 
@@ -81,9 +79,7 @@ def _request(method: str, **params) -> Dict[str, Any]:
             desc,
             payload,
         )
-        raise RuntimeError(
-            f"Telegram API error for {method}: {desc} (payload={payload})"
-        )
+        raise RuntimeError(f"Telegram API error for {method}: {desc} (payload={payload})")
 
     logger.debug("Response %s ok", method)
     return payload["result"]
@@ -122,20 +118,13 @@ def _request_multipart(
 
     for name, value in fields.items():
         body.extend(f"--{boundary}\r\n".encode("utf-8"))
-        body.extend(
-            f'Content-Disposition: form-data; name="{name}"\r\n\r\n'.encode("utf-8")
-        )
+        body.extend(f'Content-Disposition: form-data; name="{name}"\r\n\r\n'.encode("utf-8"))
         body.extend(str(value).encode("utf-8"))
         body.extend(b"\r\n")
 
     for name, (filename, content, content_type) in files.items():
         body.extend(f"--{boundary}\r\n".encode("utf-8"))
-        body.extend(
-            (
-                f'Content-Disposition: form-data; name="{name}"; '
-                f'filename="{filename}"\r\n'
-            ).encode("utf-8")
-        )
+        body.extend((f'Content-Disposition: form-data; name="{name}"; ' f'filename="{filename}"\r\n').encode("utf-8"))
         body.extend(f"Content-Type: {content_type}\r\n\r\n".encode("utf-8"))
         body.extend(content)
         body.extend(b"\r\n")
@@ -157,16 +146,12 @@ def _request_multipart(
             error_body = e.read().decode("utf-8", errors="ignore")
         except Exception:
             error_body = "<no body>"
-        raise RuntimeError(
-            f"HTTPError for {method}: {e.code} {e.reason}, body={error_body}"
-        ) from e
+        raise RuntimeError(f"HTTPError for {method}: {e.code} {e.reason}, body={error_body}") from e
 
     payload = json.loads(raw)
     if not payload.get("ok", False):
         desc = payload.get("description", "no description")
-        raise RuntimeError(
-            f"Telegram API error for {method}: {desc} (payload={payload})"
-        )
+        raise RuntimeError(f"Telegram API error for {method}: {desc} (payload={payload})")
 
     return payload["result"]
 

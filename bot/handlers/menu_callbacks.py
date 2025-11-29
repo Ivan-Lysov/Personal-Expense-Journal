@@ -1,9 +1,19 @@
-from ..handler import Handler
-from bot.constants import MENU_ADD, STATE_ASK_CATEGORY, MENU_MAIN, MENU_HELP, MENU_RECENT, MENU_SUM10, \
-      MENU_REPORT, MENU_EXPORT_CSV
-from bot.services.keyboards import main_menu_keyboard
-from ..repo.state_repo import set_state
 from typing import Any, Dict
+
+from bot.constants import (
+    MENU_ADD,
+    MENU_EXPORT_CSV,
+    MENU_HELP,
+    MENU_MAIN,
+    MENU_RECENT,
+    MENU_REPORT,
+    MENU_SUM10,
+    STATE_ASK_CATEGORY,
+)
+from bot.services.keyboards import main_menu_keyboard
+
+from ..handler import Handler
+from ..repo.state_repo import set_state
 
 
 class MenuCallbacksHandler(Handler):
@@ -59,12 +69,7 @@ class MenuCallbacksHandler(Handler):
             categories = self.get_user_categories(self.conn, user_id)
             keyboard = {
                 "inline_keyboard": [
-                    *(
-                        [
-                            {"text": name, "callback_data": f"CATEGORY::{name}"}
-                        ]
-                        for name in categories
-                    ),
+                    *([{"text": name, "callback_data": f"CATEGORY::{name}"}] for name in categories),
                     [{"text": "➕ Новая категория", "callback_data": "CATEGORY::NEW"}],
                     [{"text": "❌ Отмена", "callback_data": "CANCEL"}],
                 ]

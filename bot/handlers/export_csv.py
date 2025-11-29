@@ -1,13 +1,14 @@
-from typing import Any, Dict, List
+import csv
 import datetime
 import html
-import logging
 import io
-import csv
+import logging
+from typing import Any, Dict, List
+
+from bot.constants import MENU_ADD, MENU_EXPORT_CSV, MENU_MAIN
+from bot.repo.expenses_repo import select_all_for_user
 
 from ..handler import Handler
-from bot.constants import MENU_EXPORT_CSV, MENU_ADD, MENU_MAIN
-from bot.repo.expenses_repo import select_all_for_user
 
 logger = logging.getLogger("expense_bot.export_csv")
 
@@ -69,10 +70,7 @@ class CsvExportHandler(Handler):
         rows = select_all_for_user(self.conn, user_id)
 
         if not rows:
-            text = (
-                "⬇️ Экспорт CSV\n\n"
-                "Пока нет расходов для экспорта."
-            )
+            text = "⬇️ Экспорт CSV\n\n" "Пока нет расходов для экспорта."
             self.tg.sendMessage(chat_id=chat_id, text=text, parse_mode="HTML")
         else:
             csv_text = self._build_csv(rows)
@@ -83,11 +81,7 @@ class CsvExportHandler(Handler):
             today = datetime.date.today().isoformat()
             filename = f"expenses_{today}.csv"
 
-            caption = (
-                "⬇️ Экспорт CSV\n\n"
-                f"Файл <b>{filename}</b> содержит все ваши расходы "
-                "на момент выгрузки."
-            )
+            caption = "⬇️ Экспорт CSV\n\n" f"Файл <b>{filename}</b> содержит все ваши расходы " "на момент выгрузки."
 
             try:
                 self.tg.sendDocument(
@@ -156,13 +150,15 @@ class CsvExportHandler(Handler):
 
         for created_at, category, store, amount, note in rows:
             amount_str = f"{float(amount):.2f}"
-            writer.writerow([
-                created_at,
-                category or "",
-                store or "",
-                amount_str,
-                note or "",
-            ])
+            writer.writerow(
+                [
+                    created_at,
+                    category or "",
+                    store or "",
+                    amount_str,
+                    note or "",
+                ]
+            )
 
         return buf.getvalue()
 
@@ -186,8 +182,8 @@ class CsvExportHandler(Handler):
             # Normalize newlines
             v = v.replace("\r\n", "\n").replace("\r", "\n")
             # If value contains comma, quote or newline, wrap it in quotes and escape inner quotes
-            if any(ch in v for ch in [",", "\"", "\n"]):
-                v = v.replace("\"", "\"\"")
-                v = f"\"{v}\""
+            if any(ch in v for ch in [",", '"', "\n"]):
+                v = v.replace('"', '""')
+                v = f'"{v}"'
             out.append(v)
         return ",".join(out)

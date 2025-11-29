@@ -1,5 +1,6 @@
+from typing import Any, Dict, Optional
+
 from bot.repo.state_repo import get_state, set_state
-from typing import Optional, Dict, Any
 
 
 def parse_amount(text: str) -> Optional[float]:

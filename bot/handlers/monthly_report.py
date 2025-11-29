@@ -1,8 +1,9 @@
 from typing import Any, Dict, List
 
-from ..handler import Handler
-from bot.constants import MENU_REPORT, MENU_MAIN
+from bot.constants import MENU_MAIN, MENU_REPORT
 from bot.repo.expenses_repo import monthly_report_by_category
+
+from ..handler import Handler
 
 
 class MonthlyReportHandler(Handler):
@@ -67,10 +68,7 @@ class MonthlyReportHandler(Handler):
             ]
         }
         if not rows:
-            text = (
-                f"📅 Отчёт за <b>{month_key}</b>\n\n"
-                "Пока нет записей за этот месяц."
-            )
+            text = f"📅 Отчёт за <b>{month_key}</b>\n\n" "Пока нет записей за этот месяц."
         else:
             lines: List[str] = []
             lines.append(f"📅 Отчёт за <b>{month_key}</b>\n")
@@ -82,11 +80,11 @@ class MonthlyReportHandler(Handler):
             lines.append(f"Итого за месяц: <b>{total:.2f}</b>")
             text = "\n".join(lines)
         self.tg.sendMessage(
-                chat_id=chat_id,
-                text=text,
-                parse_mode="HTML",
-                reply_markup=keyboard,
-            )
+            chat_id=chat_id,
+            text=text,
+            parse_mode="HTML",
+            reply_markup=keyboard,
+        )
 
         if hasattr(self.tg, "answerCallbackQuery"):
             self.tg.answerCallbackQuery(callback_query_id=cq["id"])

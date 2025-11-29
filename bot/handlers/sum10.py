@@ -1,6 +1,7 @@
 from typing import Any, Dict
+
+from bot.constants import MENU_MAIN, MENU_SUM10
 from bot.handler import Handler
-from bot.constants import MENU_SUM10, MENU_MAIN
 from bot.repo.expenses_repo import sum_last_n
 
 
@@ -36,11 +37,11 @@ class SumLast10Handler(Handler):
         s = sum_last_n(self.conn, user_id, n=self.n)
         body = f"Сумма последних {self.n}: {s:.2f}"
         self.tg.sendMessage(
-                chat_id=chat_id,
-                text=body,
-                parse_mode="HTML",
-                reply_markup=keyboard,
-            )
+            chat_id=chat_id,
+            text=body,
+            parse_mode="HTML",
+            reply_markup=keyboard,
+        )
 
         if hasattr(self.tg, "answerCallbackQuery"):
             self.tg.answerCallbackQuery(callback_query_id=cq["id"])

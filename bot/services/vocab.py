@@ -1,4 +1,5 @@
 from typing import List, Set
+
 from ..repo.expenses_repo import select_user_categories, select_user_stores
 
 DEFAULT_CATEGORIES = ["Еда", "Транспорт", "Кафе", "Аптека", "Развлечения"]

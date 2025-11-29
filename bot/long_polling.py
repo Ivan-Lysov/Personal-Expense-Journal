@@ -1,6 +1,6 @@
 # bot/long_polling.py
-from typing import Any, Dict, List
 import logging
+from typing import Any, Dict, List
 
 import bot.telegram_client as tg
 
@@ -40,9 +40,7 @@ def start_long_polling(dispatcher) -> None:
             try:
                 dispatcher.dispatch(update)
             except Exception as exc:
-                logger.exception(
-                    "Error while handling update_id=%s: %r", update_id, exc
-                )
+                logger.exception("Error while handling update_id=%s: %r", update_id, exc)
 
             if update_id is not None:
                 next_update_offset = update_id + 1

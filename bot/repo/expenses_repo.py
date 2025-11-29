@@ -2,12 +2,9 @@ import sqlite3
 from typing import List
 
 
-def insert_expense(conn: sqlite3.Connection,
-                   user_id: int,
-                   category: str,
-                   store: str,
-                   amount: float,
-                   note: str = "") -> int:
+def insert_expense(
+    conn: sqlite3.Connection, user_id: int, category: str, store: str, amount: float, note: str = ""
+) -> int:
     """
     Insert a single expense row.
 
@@ -34,7 +31,7 @@ def insert_expense(conn: sqlite3.Connection,
     """
     cur = conn.execute(
         "INSERT INTO expenses(user_id, category, store, amount, note) VALUES (?,?,?,?,?)",
-        (user_id, category.strip(), store.strip(), float(amount), note.strip())
+        (user_id, category.strip(), store.strip(), float(amount), note.strip()),
     )
     conn.commit()
     return cur.lastrowid
@@ -57,8 +54,7 @@ def select_user_categories(conn: sqlite3.Connection, user_id: int) -> List[str]:
         Sorted case-insensitive distinct categories for the user.
     """
     cur = conn.execute(
-        "SELECT DISTINCT category FROM expenses WHERE user_id = ? ORDER BY category COLLATE NOCASE",
-        (user_id,)
+        "SELECT DISTINCT category FROM expenses WHERE user_id = ? ORDER BY category COLLATE NOCASE", (user_id,)
     )
     return [row["category"] for row in cur.fetchall()]
 
@@ -80,8 +76,7 @@ def select_user_stores(conn: sqlite3.Connection, user_id: int) -> List[str]:
         Sorted case-insensitive distinct stores for the user.
     """
     cur = conn.execute(
-        "SELECT DISTINCT store FROM expenses WHERE user_id = ? ORDER BY store COLLATE NOCASE",
-        (user_id,)
+        "SELECT DISTINCT store FROM expenses WHERE user_id = ? ORDER BY store COLLATE NOCASE", (user_id,)
     )
     return [row["store"] for row in cur.fetchall()]
 
@@ -108,7 +103,7 @@ def select_last_n(conn: sqlite3.Connection, user_id: int, n: int = 10, offset: i
     """
     cur = conn.execute(
         "SELECT * FROM expenses WHERE user_id = ? ORDER BY datetime(created_at) DESC LIMIT ? OFFSET ?",
-        (user_id, n, offset)
+        (user_id, n, offset),
     )
     return cur.fetchall()
 
